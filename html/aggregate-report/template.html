@@ -1,0 +1,47 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en-GB">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>SSL Certificates Monitoring Tool</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+</head>
+<body style="margin: 0; padding: 0;">
+    <!-- This is the main container - playing the role of the body -->
+    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
+        <tr>
+            <td bgcolor="#ffffff">
+                <!-- Main Container! -->
+                <!-- START for certificate details -->
+                <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse: collapse;font-family: Arial, sans-serif;border: 1px solid #ffffff;">
+                <thead>
+                    <tr>
+                        <th bgcolor="#b3b3ff" style="padding-top: 10px; padding-right: 10px; padding-bottom: 8px; padding-left: 5px;border: 1px solid #ffffff;">
+                        <p>Certificate</p>
+                        </th>
+                        <th bgcolor="#b3b3ff" style="padding-top: 10px; padding-right: 10px; padding-bottom: 8px; padding-left: 5px;border: 1px solid #ffffff;">
+                            <p style="margin: 0;">Serial Number</p>
+                        </th>
+                        <th bgcolor="#b3b3ff" style="padding-top: 10px; padding-right: 10px; padding-bottom: 8px; padding-left: 5px;border: 1px solid #ffffff;">
+                            <p style="margin: 0;">Issuer</p>
+                        </th>
+                        <th bgcolor="#b3b3ff" style="padding-top: 10px; padding-right: 10px; padding-bottom: 8px; padding-left: 5px;border: 1px solid #ffffff;">
+                            <p style="margin: 0;">Status</p>
+                        </th>
+                        <th bgcolor="#b3b3ff" style="padding-top: 10px; padding-right: 10px; padding-bottom: 8px; padding-left: 5px;border: 1px solid #ffffff;">
+                            <p>Expiry Date</p>
+                        </th>
+                        <th bgcolor="#b3b3ff" style="padding-top: 10px; padding-right: 10px; padding-bottom: 8px; padding-left: 5px;border: 1px solid #ffffff;">
+                            <p style="margin: 0;">Days</p>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {aggregate.html.part.template}
+                </tbody>
+            </table>
+            <!-- END - certificate details -->
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

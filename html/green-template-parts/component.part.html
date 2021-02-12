@@ -1,0 +1,77 @@
+                <!-- START - SSL CERT INDIVIDUAL COMPONENT -->
+                <table align="center" border="0" cellpadding="0" cellspacing="0" width="90%" style="border-collapse: collapse;" bgcolor="#f5f8f4">
+                    <tr>
+                        <!-- Inner Table Container -->
+                        <td style="padding-top: 10px; padding-bottom: 10px;">
+                          <!-- START - Table for certificate name and expiry date -->
+                          <table align="center" border="0" cellpadding="0" cellspacing="0" width="60%" style="border-collapse: collapse;font-family: Arial, sans-serif;border: 1px solid #ffffff;">
+                              <thead>
+                                <tr bgcolor="#eaf8e6">
+                                  <th style="padding-top: 10px; padding-right: 10px; padding-bottom: 8px; padding-left: 5px;">Certificate</th>
+                                  <th style="padding-top: 10px; padding-right: 10px; padding-bottom: 8px; padding-left: 5px;">Expiry Date</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                <tr style="text-align:center;">
+                                    <td bgcolor="#83d160" style="padding-top: 10px; padding-right: 10px; padding-bottom: 8px; padding-left: 5px;">
+                                        <p style="margin: 0;">{component.certificate.commonname.value}</p>
+                                    </td>
+                                    <td bgcolor="#83d160" style="padding-top: 10px; padding-right: 10px; padding-bottom: 8px; padding-left: 5px;">
+                                        <p style="margin: 0;">{component.certificate.expirydate.value}</p>
+                                    </td>                      
+                                </tr>
+                              </tbody>  
+                          </table>
+                          <!-- END - Table for certificate name and expiry date -->
+                          <!-- START for certificate details -->
+                          <table align="center" border="0" cellpadding="0" cellspacing="0" width="60%" style="border-collapse: collapse;font-family: Arial, sans-serif;border: 1px solid #ffffff;">
+                              <thead>
+                                <tr bgcolor="#eaf8e6">
+                                    <th style="padding-top: 10px; padding-right: 10px; padding-bottom: 8px; padding-left: 5px;">
+                                        <p style="margin: 0;">Serial Number</p>
+                                    </th>
+                                    <th style="padding-top: 10px; padding-right: 10px; padding-bottom: 8px; padding-left: 5px;">
+                                        <p style="margin: 0;">Issuer</p>
+                                    </th>
+                                    <th style="padding-top: 10px; padding-right: 10px; padding-bottom: 8px; padding-left: 5px;">
+                                        <p style="margin: 0;">Status</p>
+                                    </th>
+                                    <th style="padding-top: 10px; padding-right: 10px; padding-bottom: 8px; padding-left: 5px;">
+                                        <p style="margin: 0;">Days</p>
+                                    </th>
+                                </tr>
+                              </thead>
+                              <tbody>  
+                                <tr style="text-align:center;">
+                                    <td bgcolor="#eaf8e6" style="padding-top: 10px; padding-right: 10px; padding-bottom: 8px; padding-left: 5px;">
+                                        <p style="margin: 0;">{component.certificate.serialnumber.value}</p>
+                                    </td>
+                                    <td bgcolor="#eaf8e6" style="padding-top: 10px; padding-right: 10px; padding-bottom: 8px; padding-left: 5px;">
+                                        <p style="margin: 0;">{component.certificate.issuer.value}</p>
+                                    </td>
+                                    <td bgcolor="#83d160" style="padding-top: 10px; padding-right: 10px; padding-bottom: 8px; padding-left: 5px;">
+                                        <p style="margin: 0;">{component.certificate.status.value}</p>
+                                    </td>
+                                    <td bgcolor="#83d160" style="padding-top: 10px; padding-right: 10px; padding-bottom: 8px; padding-left: 5px;">
+                                        <p style="margin: 0;">{component.certificate.days.value}</p>
+                                    </td>
+                                </tr>
+                              </tbody>   
+                          </table>
+                          <!-- END - certificate details -->
+                          <!-- START - Table for websites that are using the certificate and their renewal tutorial -->
+                          <table align="center" border="0" cellpadding="0" cellspacing="0" width="60%" style="border-collapse: collapse;font-family: Arial, sans-serif;border: 1px solid #ffffff;">
+                              <thead>
+                                <tr>
+                                  <th bgcolor="#eaf8e6" style="padding-top: 10px; padding-right: 10px; padding-bottom: 8px; padding-left: 5px;">Services Affected</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {component.websites.list.html.template}
+                              </tbody>  
+                          </table>
+                          <!-- END - Table for websites that are using the certificate and their renewal tutorial -->
+                        </td>                    
+                    </tr>                  
+                </table>
+                <!-- END - SSL CERT INDIVIDUAL COMPONENT -->
