@@ -289,12 +289,12 @@ check_file_status() {
         certificate_status=''
     fi
 
-    if [ "${cert_diff}" -lt 0 ]; then
+    if [ "${cert_diff}" -le 0 ]; then
 
         certificate_status="Expired"
         return_code=2
 
-    elif [ "${cert_diff}" -lt "${warning_threshold}" ]; then
+    elif [ "${cert_diff}" -le "${warning_threshold}" ]; then
 
         certificate_status="Expiring"
         return_code=1
