@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
-### path, system and script variables declaration and initialization
-
 declare -A serviceHostMapping
+
 serviceHostMapping[sample.ssl.certificate.file.crt]="example.com"
+serviceHostMapping[sample.ssl.certificate.file.p12]="example.com"
 
 # cleanup temp files if they exist
 trap cleanup EXIT INT TERM QUIT
@@ -20,6 +20,9 @@ keystore_password=""
 # type of certificate (cmdline: -t)
 certificate_type="pem"
 
+# path to the file that stores the password for jks keystores and p12 bundles (cmdline: -w)
+bundle_key_param=""
+
 # system binaries
 awk_cmd=$(command -v awk)
 date_cmd=$(command -v date)
@@ -32,6 +35,7 @@ find_cmd=$(command -v find)
 keytool_cmd=$(command -v keytool)
 perl_cmd=$(command -v perl)
 cut_cmd=$(command -v cut)
+cat_cmd=$(command -v cat)
 
 # set the default umask to be somewhat restrictive
 umask 077
@@ -43,8 +47,6 @@ json_output_end=']}'
 # variable to hold the entire JSON object, for output
 json_output=''
 
-### script functions
-
 # remove temporary files if the script doesn't exit() cleanly
 cleanup() {
 
@@ -53,7 +55,7 @@ cleanup() {
     fi
 
     if [ -f "${certificate_error_file}" ]; then
-     rm -f "${certificate_error_file}"
+        rm -f "${certificate_error_file}"
     fi
 }
 
@@ -69,12 +71,12 @@ date2julian() {
         d2j_tmpmonth=$((12 * $3 + $1 - 3))
 
         # If it is not yet March, the year is changed to the previous year
-        d2j_tmpyear=$(( d2j_tmpmonth / 12))
+        d2j_tmpyear=$((d2j_tmpmonth / 12))
 
         # The number of days from 1 March 0000 is calculated and the number of days from 1 Jan. 4713BC is added
-        echo $(( (734 * d2j_tmpmonth + 15) / 24
-                 - 2 * d2j_tmpyear + d2j_tmpyear/4
-                 - d2j_tmpyear/100 + d2j_tmpyear/400 + $2 + 1721119 ))
+        echo $(((734 * d2j_tmpmonth + 15) / 24 - \
+        2 * d2j_tmpyear + d2j_tmpyear / 4 - \
+        d2j_tmpyear / 100 + d2j_tmpyear / 400 + $2 + 1721119))
     else
         echo 0
     fi
@@ -86,19 +88,19 @@ date2julian() {
 getmonth() {
 
     case ${1} in
-        Jan) echo 1 ;;
-        Feb) echo 2 ;;
-        Mar) echo 3 ;;
-        Apr) echo 4 ;;
-        May) echo 5 ;;
-        Jun) echo 6 ;;
-        Jul) echo 7 ;;
-        Aug) echo 8 ;;
-        Sep) echo 9 ;;
-        Oct) echo 10 ;;
-        Nov) echo 11 ;;
-        Dec) echo 12 ;;
-          *) echo 0 ;;
+    Jan) echo 1 ;;
+    Feb) echo 2 ;;
+    Mar) echo 3 ;;
+    Apr) echo 4 ;;
+    May) echo 5 ;;
+    Jun) echo 6 ;;
+    Jul) echo 7 ;;
+    Aug) echo 8 ;;
+    Sep) echo 9 ;;
+    Oct) echo 10 ;;
+    Nov) echo 11 ;;
+    Dec) echo 12 ;;
+    *) echo 0 ;;
     esac
 }
 
@@ -137,15 +139,14 @@ prints_as_json() {
 
     output_file="${1}"
 
-    if [ ! -f $output_file ]
-    then
+    if [ ! -f $output_file ]; then
         touch $output_file
     else
         rm -fr $output_file
         touch $output_file
     fi
 
-    echo "${json_output}" | jq '.' > $output_file
+    echo "${json_output}" | jq '.' >$output_file
     cat $output_file
 }
 
@@ -163,27 +164,27 @@ check_server_status() {
         options="-connect ${1}:${2} -servername ${1} $tls_flag"
     fi
 
-    echo "" | "${openssl_cmd}" s_client $options 2> "${certificate_error_file}" 1> "${certificate_temp_file}"
+    echo "" | "${openssl_cmd}" s_client $options 2>"${certificate_error_file}" 1>"${certificate_temp_file}"
 
-    if "${grep_cmd}" -i "Connection refused" "${certificate_error_file}" > /dev/null; then
+    if "${grep_cmd}" -i "Connection refused" "${certificate_error_file}" >/dev/null; then
         echo "${1}" "${2}" "Connection refused" "Unknown"
 
-    elif "${grep_cmd}" -i "No route to host" "${certificate_error_file}" > /dev/null; then
+    elif "${grep_cmd}" -i "No route to host" "${certificate_error_file}" >/dev/null; then
         echo "${1}" "${2}" "No route to host" "Unknown"
 
-    elif "${grep_cmd}" -i "gethostbyname failure" "${certificate_error_file}" > /dev/null; then
+    elif "${grep_cmd}" -i "gethostbyname failure" "${certificate_error_file}" >/dev/null; then
         echo "${1}" "${2}" "Cannot resolve domain" "Unknown"
 
-    elif "${grep_cmd}" -i "Operation timed out" "${certificate_error_file}" > /dev/null; then
+    elif "${grep_cmd}" -i "Operation timed out" "${certificate_error_file}" >/dev/null; then
         echo "${1}" "${2}" "Operation timed out" "Unknown"
 
-    elif "${grep_cmd}" -i "ssl handshake failure" "${certificate_error_file}" > /dev/null; then
+    elif "${grep_cmd}" -i "ssl handshake failure" "${certificate_error_file}" >/dev/null; then
         echo "${1}" "${2}" "SSL handshake failed" "Unknown"
 
-    elif "${grep_cmd}" -i "connect: Connection timed out" "${certificate_error_file}" > /dev/null; then
+    elif "${grep_cmd}" -i "connect: Connection timed out" "${certificate_error_file}" >/dev/null; then
         echo "${1}" "${2}" "Connection timed out" "Unknown"
 
-    elif "${grep_cmd}" -i "Name or service not known" "${certificate_error_file}" > /dev/null; then
+    elif "${grep_cmd}" -i "Name or service not known" "${certificate_error_file}" >/dev/null; then
         echo "${1}" "${2}" "Unable to resolve the DNS name ${1}" "Unknown"
 
     else
@@ -201,6 +202,7 @@ check_file_status() {
     certificate_file="${1}"
     host="${2}"
     port="${3}"
+    bundle_key="${4}"
 
     # check to make sure the certificate file exists
     if [ ! -r "${certificate_file}" ] || [ ! -s "${certificate_file}" ]; then
@@ -211,11 +213,19 @@ check_file_status() {
         return
     fi
 
+    # check to make sure the certificate file password exists
+    if [[ "${certificate_file}" == "p12" && (!( -r "${bundle_key}") || !( -s "${bundle_key}")) ]]; then
+        
+        echo "ERROR: The file named ${bundle_key} is unreadable or doesn't exist"
+
+        return
+    fi
+
     # grab the expiration date from the X.509 certificate
     if [ "${keystore_password}" != "" ]; then
 
         # get the certificate from the PKCS#12 database, and send the informational message to /dev/null
-        "${openssl_cmd}" pkcs12 -nokeys -in "${certificate_file}" -out "${certificate_temp_file}" -clcerts -password pass:"${keystore_password}" 2> /dev/null
+        "${openssl_cmd}" pkcs12 -nokeys -in "${certificate_file}" -out "${certificate_temp_file}" -clcerts -password pass:"${keystore_password}" 2>/dev/null
 
         # get the expiration date from the certificate
         ssl_certificate_date=$("${openssl_cmd}" x509 -in "${certificate_temp_file}" -enddate -noout | "${sed_cmd}" 's/notAfter\=//')
@@ -243,20 +253,33 @@ check_file_status() {
         # get the serial number from the X.509 certificate
         ssl_certificate_serial_number=$("${keytool_cmd}" -printcert -v -file "${certificate_file}" | "${perl_cmd}" -ne 'if(/Serial number: (.*?)\n/) { print "$1\n"; }')
 
+    elif [ "${certificate_type}" == "p12" ]; then
+
+        # expiration date from the ceriticate
+        ssl_certificate_date=$("${keytool_cmd}" -list -v -keystore "${certificate_file}" -storepass $(${cat_cmd} ${bundle_key}) | "${perl_cmd}" -ne 'if(/until: (.*?)\n/) { print "$1\n"; }')
+
+        # issuer from the certificate
+        ssl_certificate_issuer=$("${keytool_cmd}" -list -v -keystore "${certificate_file}" -storepass $(${cat_cmd} ${bundle_key}) | "${perl_cmd}" -ne 'if(/Issuer: (.*?)\n/) { print "$1\n"; }' | "${cut_cmd}" -d ',' -f 1 | "${cut_cmd}" -c 4-)
+
+        # common name (CN) from the X.509 certificate
+        ssl_certificate_common_name=$("${keytool_cmd}" -list -v -keystore "${certificate_file}" -storepass $(${cat_cmd} ${bundle_key}) | "${perl_cmd}" -ne 'if(/Owner: (.*?)\n/) { print "$1\n"; }' | "${cut_cmd}" -d ',' -f 1 | "${cut_cmd}" -c 4-)
+
+        # serial number from the X.509 certificate
+        ssl_certificate_serial_number=$("${keytool_cmd}" -list -v -keystore "${certificate_file}" -storepass $(${cat_cmd} ${bundle_key}) | "${perl_cmd}" -ne 'if(/Serial number: (.*?)\n/) { print "$1\n"; }')
+
     else
         # get the expiration date from the ceriticate
         ssl_certificate_date=$("${openssl_cmd}" x509 -in "${certificate_file}" -enddate -noout -inform "${certificate_type}" | "${sed_cmd}" 's/notAfter\=//')
 
         # get the issuer from the certificate
         ssl_certificate_issuer=$("${openssl_cmd}" x509 -in "${certificate_file}" -issuer -noout -inform "${certificate_type}" | "${awk_cmd}" 'BEGIN {RS=", " } $0 ~ /^O =/ { print substr($0,5,21)}')
-        if [ -z "$ssl_certificate_issuer" ]
-        then
+        if [ -z "$ssl_certificate_issuer" ]; then
             ssl_certificate_issuer=$("${openssl_cmd}" x509 -in "${certificate_file}" -issuer -noout -inform "${certificate_type}" | "${awk_cmd}" 'BEGIN {RS="/" } $0 ~ /^O=/ { print substr($0,3,21)}')
         fi
 
         # get the common name (CN) from the X.509 certificate
         ssl_certificate_common_name=$("${openssl_cmd}" x509 -in "${certificate_file}" -subject -noout -inform "${certificate_type}" | "${sed_cmd}" -e 's/.*CN = //' | "${sed_cmd}" -e 's/, .*//')
-        
+
         # fallback to a different command in case the previous one cannot extract the value
         if [[ $ssl_certificate_common_name == *"/"* ]]; then
             ssl_certificate_common_name=$("${openssl_cmd}" x509 -in "${certificate_file}" -subject -noout -inform "${certificate_type}" | "${sed_cmd}" -e 's/.*CN=//' | "${sed_cmd}" -e 's/, .*//')
@@ -269,7 +292,7 @@ check_file_status() {
     # split the result into parameters, and pass the relevant pieces to date2julian
     set -- ${ssl_certificate_date}
 
-    if [ "${certificate_type}" == "crt" ]; then
+    if [ "${certificate_type}" == "crt" ] || [ "${certificate_type}" == "p12" ]; then
 
         month=$(getmonth "${2}")
 
@@ -304,50 +327,52 @@ check_file_status() {
         return_code=0
     fi
 
-    if [ "${certificate_type}" == "crt" ]; then
+    if [ "${certificate_type}" == "crt" ] || [ "${certificate_type}" == "p12" ]; then
         min_date=$(echo "${ssl_certificate_date}" | "${awk_cmd}" '{ print $2, $3, $6 }')
     else
         min_date=$(echo "${ssl_certificate_date}" | "${awk_cmd}" '{ print $1, $2, $4 }')
     fi
 
     # dynamic JSON model for the certificate details object. This is going to be inserted in the 'certificatesList' array
-    json_array_entry=$( jq -n \
-                    --arg sn "${ssl_certificate_serial_number}" \
-                    --arg cn "${ssl_certificate_common_name}" \
-                    --arg iss "${ssl_certificate_issuer}" \
-                    --arg hn "${host}" \
-                    --arg st "${certificate_status}" \
-                    --arg ed "${min_date}" \
-                    --arg dte "${cert_diff}" \
-                    '{serialNumber: $sn, ssl_certificate_common_name: $cn, issuer: $iss, hostName: $hn, status: $st, expiryDate: $ed, daysToExpire: $dte}' )
-    
+    json_array_entry=$(jq -n \
+        --arg sn "${ssl_certificate_serial_number}" \
+        --arg cn "${ssl_certificate_common_name}" \
+        --arg iss "${ssl_certificate_issuer}" \
+        --arg hn "${host}" \
+        --arg st "${certificate_status}" \
+        --arg ed "${min_date}" \
+        --arg dte "${cert_diff}" \
+        '{serialNumber: $sn, ssl_certificate_common_name: $cn, issuer: $iss, hostName: $hn, status: $st, expiryDate: $ed, daysToExpire: $dte}')
+
     # append the entry into the JSON array
     json_output+="${json_array_entry}"
     json_output+=","
 }
 
 # Entrypoint
-while getopts abc:d:e:E:f:hik:nNp:qs:St:Vx: option
-do
+while getopts abc:d:e:E:f:hik:nNp:qs:St:Vx: option; do
     case "${option}" in
-        b) NOHEADER="TRUE";;
-        c) certificate_file=${OPTARG};;
-        d) certificates_folder=${OPTARG};;
-        f) server_file=$OPTARG;;
-        i) ISSUER="TRUE";;
-        k) keystore_password=${OPTARG};;
-        p) port=$OPTARG;;
-        s) host=$OPTARG;;
-        S) VALIDATION="TRUE";;
-        t) certificate_type=$OPTARG;;
-        x) warning_threshold=$OPTARG;;
-       \?) echo 'Argument is not valid. Exiting...'
-           exit 1;;
+    b) NOHEADER="TRUE" ;;
+    c) certificate_file=${OPTARG} ;;
+    d) certificates_folder=${OPTARG} ;;
+    f) server_file=$OPTARG ;;
+    i) ISSUER="TRUE" ;;
+    k) keystore_password=${OPTARG} ;;
+    p) port=$OPTARG ;;
+    s) host=$OPTARG ;;
+    S) VALIDATION="TRUE" ;;
+    t) certificate_type=$OPTARG ;;
+    x) warning_threshold=$OPTARG ;;
+    w) bundle_key_param=$OPTARG ;;
+    \?)
+        echo 'Argument is not valid. Exiting...'
+        exit 1
+        ;;
     esac
 done
 
 # Send along the servername when TLS is used
-if ${openssl_cmd} s_client -help 2>&1 | grep '-servername' > /dev/null; then
+if ${openssl_cmd} s_client -help 2>&1 | grep '-servername' >/dev/null; then
     tls_server_name="TRUE"
 else
     tls_server_name="FALSE"
@@ -384,8 +409,7 @@ elif [ -f "${server_file}" ]; then
 
     IFS=$'\n'
 
-    for line in $(grep -E -v '(^#|^$)' "${server_file}")
-    do
+    for line in $(grep -E -v '(^#|^$)' "${server_file}"); do
         host=${line%% *}
         port=${line##* }
 
@@ -410,7 +434,12 @@ elif [ "${certificate_file}" != "" ]; then
 
     json_output+="${json_output_start}"
 
-    check_file_status "${certificate_file}" "file" "${certificate_file}"
+    # if the password file parameter is not empty, include it in the function call
+    if [ "${bundle_key_param}" != "" ]; then
+        check_file_status "${certificate_file}" "FILE" "${certificate_file}" "${bundle_key_param}"
+    else
+        check_file_status "${certificate_file}" "FILE" "${certificate_file}"
+    fi
 
     json_output="${json_output::-1}"
     json_output+="${json_output_end}"
@@ -418,7 +447,7 @@ elif [ "${certificate_file}" != "" ]; then
     prints_as_json "keystore-file-json-output.json"
 
 # Check to see if the certificates in certificates_folder are about to expire
-elif [ "${certificates_folder}" != "" ] && ("${find_cmd}" -L "${certificates_folder}" -type f > /dev/null 2>&1); then
+elif [ "${certificates_folder}" != "" ] && ("${find_cmd}" -L "${certificates_folder}" -type f >/dev/null 2>&1); then
 
     json_output+="${json_output_start}"
 
